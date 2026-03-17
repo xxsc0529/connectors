@@ -38,6 +38,11 @@ from connectors.config import (
 from connectors.es import TIMESTAMP_FIELD
 from connectors.es.management_client import ESManagementClient
 from connectors.protocol import JobType
+
+try:
+    from connectors.ob.client import OBManagementClient
+except ImportError:
+    OBManagementClient = None
 from connectors.protocol.connectors import (
     DELETED_DOCUMENT_COUNT,
     INDEXED_DOCUMENT_COUNT,
@@ -846,8 +851,14 @@ class SyncOrchestrator:
 
     def __init__(self, elastic_config, logger_=None):
         self._logger = logger_ or logger
-        self._logger.debug(f"SyncOrchestrator connecting to {elastic_config['host']}")
-        self.es_management_client = ESManagementClient(elastic_config)
+        if elastic_config.get("backend") == "oceanbase" and OBManagementClient is not None:
+            self._logger.debug(
+                f"SyncOrchestrator using OceanBase at {elastic_config.get('host', '')}:{elastic_config.get('port', '')}"
+            )
+            self.es_management_client = OBManagementClient(elastic_config)
+        else:
+            self._logger.debug(f"SyncOrchestrator connecting to {elastic_config['host']}")
+            self.es_management_client = ESManagementClient(elastic_config)
         self.loop = asyncio.get_event_loop()
         self._extractor = None
         self._extractor_task = None

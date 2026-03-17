@@ -57,7 +57,10 @@ async def _start_service(actions, config, loop):
             return -1
 
         # injecting this value into the config allows us to avoid checking the server again before requests
-        config["elasticsearch"]["serverless"] = is_serverless
+        if config.get("backend") == "oceanbase" and config.get("oceanbase"):
+            config["oceanbase"]["serverless"] = False
+        else:
+            config["elasticsearch"]["serverless"] = is_serverless
     finally:
         for sig in (signal.SIGINT, signal.SIGTERM):
             loop.remove_signal_handler(sig)

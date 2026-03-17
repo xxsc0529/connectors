@@ -14,6 +14,11 @@ from connectors.protocol import (
     SyncJobIndex,
 )
 from connectors.services.base import BaseService
+
+try:
+    from connectors.ob.cli_backend import OBConnectorIndex, OBSyncJobIndex
+except ImportError:
+    OBConnectorIndex = OBSyncJobIndex = None
 from connectors.sync_job_runner import SyncJobRunner
 from connectors.utils import ConcurrentTasks, get_source_klass
 
@@ -96,8 +101,12 @@ class JobExecutionService(BaseService):
             )
 
     async def _run(self):
-        self.connector_index = ConnectorIndex(self.es_config)
-        self.sync_job_index = SyncJobIndex(self.es_config)
+        if self.es_config.get("backend") == "oceanbase" and OBConnectorIndex is not None:
+            self.connector_index = OBConnectorIndex(self.es_config)
+            self.sync_job_index = OBSyncJobIndex(self.es_config)
+        else:
+            self.connector_index = ConnectorIndex(self.es_config)
+            self.sync_job_index = SyncJobIndex(self.es_config)
 
         native_service_types = self.config.get("native_service_types", []) or []
         if len(native_service_types) > 0:

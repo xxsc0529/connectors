@@ -45,6 +45,16 @@ def load_config(ctx, config):
         raise FileNotFoundError(msg)
 
 
+def get_backend_config(obj):
+    """Return config dict for CLI backend (Elasticsearch or OceanBase)."""
+    c = obj.get("config") or {}
+    if c.get("backend") == "oceanbase" and c.get("oceanbase"):
+        ob = dict(c["oceanbase"])
+        ob["backend"] = "oceanbase"
+        return ob
+    return c.get("elasticsearch", c)
+
+
 # Main group
 @click.group(
     invoke_without_command=True,
@@ -120,7 +130,7 @@ def connector(ctx):
 @click.command(name="list", help="List all existing connectors")
 @click.pass_obj
 def list_connectors(obj):
-    connector = Connector(config=obj["config"]["elasticsearch"])
+    connector = Connector(config=get_backend_config(obj))
     coro = connector.list_connectors()
 
     try:
@@ -253,8 +263,9 @@ def create(
         with open(from_file) as fd:
             connector_configuration = json.load(fd)
 
-    index = Index(config=obj["config"]["elasticsearch"])
-    connector = Connector(obj["config"]["elasticsearch"])
+    cfg = get_backend_config(obj)
+    index = Index(config=cfg)
+    connector = Connector(cfg)
     configuration = connector.service_type_configuration(
         source_class=_default_config()["sources"][service_type]
     )
@@ -393,7 +404,7 @@ def index(obj):
 @click.command(name="list", help="Show all indices")
 @click.pass_obj
 def list_indices(obj):
-    index = Index(config=obj["config"]["elasticsearch"])
+    index = Index(config=get_backend_config(obj))
     indices = index.list_indices()
 
     click.echo("")
@@ -421,7 +432,7 @@ index.add_command(list_indices)
 @click.pass_obj
 @click.argument("index", nargs=1)
 def clean(obj, index):
-    index_cli = Index(config=obj["config"]["elasticsearch"])
+    index_cli = Index(config=get_backend_config(obj))
     click.confirm(
         click.style("Are you sure you want to clean " + index + "?", fg="yellow"),
         abort=True,
@@ -446,7 +457,7 @@ index.add_command(clean)
 @click.pass_obj
 @click.argument("index", nargs=1)
 def delete(obj, index):
-    index_cli = Index(config=obj["config"]["elasticsearch"])
+    index_cli = Index(config=get_backend_config(obj))
     click.confirm(
         click.style("Are you sure you want to delete " + index + "?", fg="yellow"),
         abort=True,
@@ -494,10 +505,10 @@ def job(obj):
     type=click.Choice(["json", "text"]),
 )
 def start(obj, i, t, output_format):
-    job_cli = Job(config=obj["config"]["elasticsearch"])
+    job_cli = Job(config=get_backend_config(obj))
     job_id = job_cli.start(connector_id=i, job_type=t)
 
-    if job:
+    if job_id:
         if output_format == "json":
             click.echo(json.dumps({"id": job_id}, indent=4))
         else:
@@ -522,7 +533,7 @@ job.add_command(start)
 @click.pass_obj
 @click.argument("connector_id", nargs=1)
 def list_jobs(obj, connector_id):
-    job_cli = Job(config=obj["config"]["elasticsearch"])
+    job_cli = Job(config=get_backend_config(obj))
     jobs = job_cli.list_jobs(connector_id=connector_id)
 
     if len(jobs) == 0:
@@ -567,7 +578,7 @@ job.add_command(list_jobs)
 @click.pass_obj
 @click.argument("job_id")
 def cancel(obj, job_id):
-    job_cli = Job(config=obj["config"]["elasticsearch"])
+    job_cli = Job(config=get_backend_config(obj))
     click.confirm(
         click.style("Are you sure you want to cancel jobs?", fg="yellow"), abort=True
     )
@@ -600,7 +611,7 @@ job.add_command(cancel)
     type=click.Choice(["json", "text"]),
 )
 def view_job(obj, job_id, output_format):
-    job_cli = Job(config=obj["config"]["elasticsearch"])
+    job_cli = Job(config=get_backend_config(obj))
     job = job_cli.job(job_id=job_id)
     result = {
         "job_id": job.id,

@@ -12,6 +12,12 @@ from connectors.es.management_client import ESManagementClient
 from connectors.protocol import ConnectorIndex, SyncJobIndex
 from connectors.services.base import BaseService
 
+try:
+    from connectors.ob.cli_backend import OBConnectorIndex, OBSyncJobIndex
+    from connectors.ob.client import OBManagementClient
+except ImportError:
+    OBConnectorIndex = OBSyncJobIndex = OBManagementClient = None
+
 IDLE_JOB_ERROR = "The job has not seen any update for some time."
 
 
@@ -26,9 +32,14 @@ class JobCleanUpService(BaseService):
 
     async def _run(self):
         self.logger.debug("Successfully started Job cleanup task...")
-        self.connector_index = ConnectorIndex(self.es_config)
-        self.es_management_client = ESManagementClient(self.es_config)
-        self.sync_job_index = SyncJobIndex(self.es_config)
+        if self.es_config.get("backend") == "oceanbase" and OBConnectorIndex is not None:
+            self.connector_index = OBConnectorIndex(self.es_config)
+            self.sync_job_index = OBSyncJobIndex(self.es_config)
+            self.es_management_client = OBManagementClient(self.es_config)
+        else:
+            self.connector_index = ConnectorIndex(self.es_config)
+            self.sync_job_index = SyncJobIndex(self.es_config)
+            self.es_management_client = ESManagementClient(self.es_config)
 
         try:
             while self.running:

@@ -19,13 +19,24 @@ from connectors.protocol import (
     SyncJobIndex,
 )
 
+try:
+    from connectors.ob.cli_backend import OBCLIClient, OBConnectorIndex, OBSyncJobIndex
+except ImportError:
+    OBCLIClient = OBConnectorIndex = OBSyncJobIndex = None
+
 
 class Job:
     def __init__(self, config):
         self.config = config
-        self.cli_client = CLIClient(self.config)
-        self.sync_job_index = SyncJobIndex(self.config)
-        self.connector_index = ConnectorIndex(self.config)
+        use_ob = config.get("backend") == "oceanbase" and OBCLIClient is not None
+        if use_ob:
+            self.cli_client = OBCLIClient(config)
+            self.sync_job_index = OBSyncJobIndex(config)
+            self.connector_index = OBConnectorIndex(config)
+        else:
+            self.cli_client = CLIClient(self.config)
+            self.sync_job_index = SyncJobIndex(self.config)
+            self.connector_index = ConnectorIndex(self.config)
 
     def list_jobs(self, connector_id=None, index_name=None, job_id=None):
         return asyncio.run(self.__async_list_jobs(connector_id, index_name, job_id))

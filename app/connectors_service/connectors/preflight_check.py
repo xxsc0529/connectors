@@ -14,15 +14,25 @@ from connectors.es.management_client import ESManagementClient
 from connectors.protocol import CONCRETE_CONNECTORS_INDEX, CONCRETE_JOBS_INDEX
 from connectors.utils import CancellableSleeps
 
+try:
+    from connectors.ob.client import OBManagementClient
+except ImportError:
+    OBManagementClient = None
+
 
 class PreflightCheck:
     def __init__(self, config, version):
         self.version = version
         self.config = config
-        self.elastic_config = config["elasticsearch"]
+        if config.get("backend") == "oceanbase" and config.get("oceanbase") and OBManagementClient is not None:
+            self.elastic_config = dict(config["oceanbase"])
+            self.elastic_config["backend"] = "oceanbase"
+            self.es_management_client = OBManagementClient(self.elastic_config)
+        else:
+            self.elastic_config = config["elasticsearch"]
+            self.es_management_client = ESManagementClient(self.elastic_config)
         self.service_config = config["service"]
         self.extraction_config = config.get("extraction_service", None)
-        self.es_management_client = ESManagementClient(self.elastic_config)
         self.preflight_max_attempts = int(
             self.service_config.get("preflight_max_attempts", 10)
         )
@@ -70,9 +80,13 @@ class PreflightCheck:
         es_info = await self.es_management_client.wait()
         if es_info is None:
             logger.critical(
-                f"{self.elastic_config['host']} seems to be unreachable. Bye!"
+                f"{self.elastic_config.get('host', 'backend')} seems to be unreachable. Bye!"
             )
             return False, False
+
+        if self.elastic_config.get("backend") == "oceanbase":
+            logger.info("OceanBase backend: skipping Elasticsearch version check.")
+            return True, False
 
         version = es_info.get("version", {}) or {}
         is_serverless = version.get("build_flavor") == "serverless"

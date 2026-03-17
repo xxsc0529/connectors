@@ -18,6 +18,11 @@ from connectors.protocol import (
 )
 from connectors.utils import get_source_klass
 
+try:
+    from connectors.ob.cli_backend import OBCLIClient, OBConnectorIndex
+except ImportError:
+    OBCLIClient = OBConnectorIndex = None
+
 EVERYDAY_AT_MIDNIGHT = "0 0 0 * * ?"
 
 
@@ -28,11 +33,13 @@ class IndexAlreadyExists(Exception):
 class Connector:
     def __init__(self, config):
         self.config = config
-
-        # initialize ES client
-        self.cli_client = CLIClient(self.config)
-
-        self.connector_index = ConnectorIndex(self.config)
+        use_ob = config.get("backend") == "oceanbase" and OBCLIClient is not None
+        if use_ob:
+            self.cli_client = OBCLIClient(config)
+            self.connector_index = OBConnectorIndex(config)
+        else:
+            self.cli_client = CLIClient(self.config)
+            self.connector_index = ConnectorIndex(self.config)
 
     async def list_connectors(self):
         # TODO move this on top
@@ -128,10 +135,10 @@ class Connector:
             api_key_error = None
             api_key_skipped = False
 
-            # Skip creating an API key if the CLI is authenticated with an API key
-            if "api_key" in self.config:
+            # Skip creating an API key if using OceanBase or authenticated with an API key
+            if self.config.get("backend") == "oceanbase" or "api_key" in self.config:
                 api_key_skipped = True
-            else:
+            if not api_key_skipped:
                 try:
                     api_key = await self.__create_api_key(index_name)
                     api_key_id = api_key["id"]

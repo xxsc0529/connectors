@@ -76,7 +76,11 @@ class BaseService(metaclass=_Registry):
             f"[{service_name}]", {"service_name": service_name}
         )
         self.service_config = self.config["service"]
-        self.es_config = self.config["elasticsearch"]
+        if config.get("backend") == "oceanbase" and config.get("oceanbase"):
+            self.es_config = dict(config["oceanbase"])
+            self.es_config["backend"] = "oceanbase"
+        else:
+            self.es_config = self.config["elasticsearch"]
         self.connectors = self._parse_connectors()
         self.connector_index = None
         self.sync_job_index = None

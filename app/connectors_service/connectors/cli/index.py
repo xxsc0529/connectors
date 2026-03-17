@@ -14,12 +14,22 @@ from connectors.protocol import (
     ConnectorIndex,
 )
 
+try:
+    from connectors.ob.cli_backend import OBCLIClient, OBConnectorIndex
+except ImportError:
+    OBCLIClient = OBConnectorIndex = None
+
 
 class Index:
     def __init__(self, config):
         self.elastic_config = config
-        self.cli_client = CLIClient(self.elastic_config)
-        self.connectors_index = ConnectorIndex(self.elastic_config)
+        use_ob = config.get("backend") == "oceanbase" and OBCLIClient is not None
+        if use_ob:
+            self.cli_client = OBCLIClient(config)
+            self.connectors_index = OBConnectorIndex(config)
+        else:
+            self.cli_client = CLIClient(self.elastic_config)
+            self.connectors_index = ConnectorIndex(self.elastic_config)
 
     def list_indices(self):
         return asyncio.run(self.__list_indices())

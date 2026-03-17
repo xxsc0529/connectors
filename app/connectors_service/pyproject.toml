@@ -75,7 +75,7 @@ dependencies = [
     "tzcron==1.0.0",
     "uvloop==0.20.0; sys_platform != 'win32'",
     "wcmatch==8.4.1",
-    "elasticsearch-connectors-sdk"
+    "elasticsearch-connectors-sdk @ file:../../libs/connectors_sdk"
 ]
 
 [project.optional-dependencies]
@@ -115,6 +115,7 @@ fake-kibana = "connectors.kibana:main"
 connectors = "connectors.connectors_cli:main"
 elastic-agent-connectors = "connectors.agent.cli:main"
 test-connectors = "scripts.testing.cli:main"
+sync-ob = "scripts.sync_ob:_run"
 
 [tool.setuptools.packages.find]
 where = ["."]
