@@ -33,6 +33,17 @@ Refer to the [Connector API documentation](https://www.elastic.co/docs/api/doc/e
 
 Learn about our CLI tool in [`docs/CLI.md`](./docs/CLI.md).
 
+## OceanBase backend (custom)
+
+This repository includes an **OceanBase backend** extension, which lets you store connector metadata and document content tables in a MySQL-protocol OceanBase instance (instead of Elasticsearch).
+
+OceanBase implementation and documentation are adapted from the upstream project: https://github.com/elastic/connectors
+
+Main OceanBase docs:
+- `docs/oceanbase/README.md` (index/navigation)
+- `docs/oceanbase/en/01-quickstart.md` (English quick start)
+- `docs/oceanbase/zh/01-快速开始.md` (Chinese quick start)
+
 ## Connector project structure
 
 There are two directories that contain the relevant code for running a connector:
